@@ -1,7 +1,8 @@
 """
 Configuration settings using Pydantic.
 """
-from pydantic import BaseSettings, Field
+from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import Optional
 
 
@@ -60,10 +61,11 @@ class Settings(BaseSettings):
         """Get Qdrant connection URL."""
         return f"http://{self.qdrant_host}:{self.qdrant_port}"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": False
+    }
 
 
 # Global settings instance
