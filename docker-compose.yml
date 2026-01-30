@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: customs_kb_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-customs_kb}
+      POSTGRES_USER: ${POSTGRES_USER:-customs_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-customs_pass}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-customs_user} -d ${POSTGRES_DB:-customs_kb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - customs_kb_network
+
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: customs_kb_qdrant
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - customs_kb_network
+
+volumes:
+  postgres_data:
+    driver: local
+  qdrant_data:
+    driver: local
+
+networks:
+  customs_kb_network:
+    driver: bridge
