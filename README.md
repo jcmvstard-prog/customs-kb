@@ -4,6 +4,19 @@ A hybrid knowledge base system combining semantic search (Qdrant) with structure
 
 **🚀 Live Repository**: https://github.com/jcmvstard-prog/customs-kb
 
+## 🚀 Quick Deploy
+
+Deploy to production in one click:
+
+- **Railway.app** (Recommended): [Deploy Now](https://railway.app/new) → Select `jcmvstard-prog/customs-kb`
+- **Render.com**: [Deploy Now](https://render.com) → Connect GitHub repo
+- **Fly.io**: `flyctl launch` from project directory
+- **DigitalOcean**: [Deploy Now](https://cloud.digitalocean.com/apps)
+
+📖 **Full deployment guide**: See [DEPLOYMENT_COMPLETE.md](DEPLOYMENT_COMPLETE.md)
+
+---
+
 ## Features
 
 - **Hybrid Search**: Combines vector similarity search with structured SQL queries
