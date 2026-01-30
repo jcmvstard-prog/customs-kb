@@ -1,0 +1,73 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: customs-kb-postgres
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.postgres
+    envVars:
+      - key: POSTGRES_USER
+        value: customs_user
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+      - key: POSTGRES_DB
+        value: customs_kb
+    disk:
+      name: postgres-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 1
+
+  # Qdrant Vector Database
+  - type: pserv
+    name: customs-kb-qdrant
+    env: docker
+    plan: free
+    image:
+      url: docker.io/qdrant/qdrant:v1.7.4
+    envVars:
+      - key: QDRANT__SERVICE__HTTP_PORT
+        value: 6333
+    disk:
+      name: qdrant-data
+      mountPath: /qdrant/storage
+      sizeGB: 1
+
+  # Python Application
+  - type: web
+    name: customs-kb-app
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python scripts/init_db.py && python scripts/init_qdrant.py
+    startCommand: python -m src.cli.main ingest status
+    envVars:
+      - key: POSTGRES_HOST
+        fromService:
+          type: pserv
+          name: customs-kb-postgres
+          property: host
+      - key: POSTGRES_PORT
+        value: 5432
+      - key: POSTGRES_USER
+        value: customs_user
+      - key: POSTGRES_PASSWORD
+        fromService:
+          type: pserv
+          name: customs-kb-postgres
+          envVarKey: POSTGRES_PASSWORD
+      - key: POSTGRES_DB
+        value: customs_kb
+      - key: QDRANT_HOST
+        fromService:
+          type: pserv
+          name: customs-kb-qdrant
+          property: host
+      - key: QDRANT_PORT
+        value: 6333
+      - key: QDRANT_COLLECTION
+        value: cbp_documents
+      - key: EMBEDDING_MODEL
+        value: sentence-transformers/all-MiniLM-L6-v2
+      - key: FEDERAL_REGISTER_AGENCY
+        value: u-s-customs-and-border-protection
+      - key: LOG_LEVEL
+        value: INFO

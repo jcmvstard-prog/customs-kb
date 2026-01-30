@@ -2,6 +2,8 @@
 
 A hybrid knowledge base system combining semantic search (Qdrant) with structured lookups (PostgreSQL) for US Customs and Border Protection data.
 
+**🚀 Live Repository**: https://github.com/jcmvstard-prog/customs-kb
+
 ## Features
 
 - **Hybrid Search**: Combines vector similarity search with structured SQL queries

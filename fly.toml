@@ -1,0 +1,38 @@
+# Fly.io configuration for US Customs Knowledge Base
+
+app = "customs-kb"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  POSTGRES_PORT = "5432"
+  POSTGRES_DB = "customs_kb"
+  POSTGRES_USER = "customs_user"
+  QDRANT_PORT = "6333"
+  QDRANT_COLLECTION = "cbp_documents"
+  EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+  FEDERAL_REGISTER_AGENCY = "u-s-customs-and-border-protection"
+  LOG_LEVEL = "INFO"
+
+[mounts]
+  source = "customs_kb_data"
+  destination = "/app/data"
+
+[[services]]
+  internal_port = 8000
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
