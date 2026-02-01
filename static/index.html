@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>US Customs Knowledge Base</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .search-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .results {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .result-item:hover {
+            background: #fff;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .result-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .result-meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .result-excerpt {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+
+        .score {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+
+        a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .hts-detail {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px 20px;
+            margin-top: 10px;
+        }
+
+        .hts-label {
+            font-weight: bold;
+            color: #666;
+        }
+
+        .hts-value {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛃 US Customs Knowledge Base</h1>
+            <p class="subtitle">Hybrid search for Federal Register documents and HTSUS tariff codes</p>
+        </div>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="docCount">-</div>
+                <div class="stat-label">Documents</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="htsCount">-</div>
+                <div class="stat-label">HTS Codes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="vectorCount">-</div>
+                <div class="stat-label">Vector Points</div>
+            </div>
+        </div>
+
+        <div class="search-section">
+            <div class="tabs">
+                <button class="tab active" data-tab="semantic">Semantic Search</button>
+                <button class="tab" data-tab="hts">HTS Lookup</button>
+                <button class="tab" data-tab="hybrid">Hybrid Search</button>
+            </div>
+
+            <div class="tab-content active" id="semantic-tab">
+                <div class="search-box">
+                    <input type="text" id="semanticQuery" placeholder="Search Federal Register documents... (e.g., 'aluminum import restrictions')" />
+                    <button onclick="semanticSearch()">Search</button>
+                </div>
+            </div>
+
+            <div class="tab-content" id="hts-tab">
+                <div class="search-box">
+                    <input type="text" id="htsQuery" placeholder="Search HTS codes... (e.g., 'cheese', 'steel', 'textiles')" />
+                    <button onclick="htsSearch()">Search</button>
+                </div>
+            </div>
+
+            <div class="tab-content" id="hybrid-tab">
+                <div class="search-box">
+                    <input type="text" id="htsCode" placeholder="HTS Code (e.g., 0406.30.00)" style="flex: 0.3;" />
+                    <input type="text" id="hybridQuery" placeholder="Search query..." />
+                    <button onclick="hybridSearch()">Search</button>
+                </div>
+            </div>
+
+            <div class="results" id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        // Load stats on page load
+        window.addEventListener('DOMContentLoaded', loadStats);
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+
+                document.getElementById('docCount').textContent = data.documents_count;
+                document.getElementById('htsCount').textContent = data.hts_codes_count;
+                document.getElementById('vectorCount').textContent = data.vector_points;
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active from all tabs
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+
+                // Add active to clicked tab
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab + '-tab').classList.add('active');
+            });
+        });
+
+        // Enter key support
+        document.getElementById('semanticQuery').addEventListener('keypress', e => {
+            if (e.key === 'Enter') semanticSearch();
+        });
+        document.getElementById('htsQuery').addEventListener('keypress', e => {
+            if (e.key === 'Enter') htsSearch();
+        });
+        document.getElementById('hybridQuery').addEventListener('keypress', e => {
+            if (e.key === 'Enter') hybridSearch();
+        });
+
+        async function semanticSearch() {
+            const query = document.getElementById('semanticQuery').value;
+            if (!query.trim()) return;
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">🔍 Searching...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}&limit=10`);
+                const results = await response.json();
+
+                if (results.length === 0) {
+                    resultsDiv.innerHTML = '<div class="result-item">No results found.</div>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = results.map(r => `
+                    <div class="result-item">
+                        <div class="result-title">${r.title}</div>
+                        <div class="result-meta">
+                            <span class="badge">${r.type || 'Document'}</span>
+                            <span class="badge">${r.date || 'No date'}</span>
+                            <span class="score">Relevance: ${(r.score * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="result-excerpt">${r.excerpt}</div>
+                        ${r.agencies.length > 0 ? `<div style="margin-top:10px"><strong>Agencies:</strong> ${r.agencies.join(', ')}</div>` : ''}
+                        ${r.url ? `<div style="margin-top:10px"><a href="${r.url}" target="_blank">View on FederalRegister.gov →</a></div>` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="result-item error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function htsSearch() {
+            const query = document.getElementById('htsQuery').value;
+            if (!query.trim()) return;
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">🔍 Searching HTS codes...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/hts/search?q=${encodeURIComponent(query)}&limit=20`);
+                const results = await response.json();
+
+                if (results.length === 0) {
+                    resultsDiv.innerHTML = '<div class="result-item">No HTS codes found.</div>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = results.map(r => `
+                    <div class="result-item">
+                        <div class="result-title">${r.hts_number}: ${r.description}</div>
+                        <div class="hts-detail">
+                            <div class="hts-label">General Rate:</div>
+                            <div class="hts-value">${r.general_rate || 'N/A'}</div>
+                            <div class="hts-label">Special Rate:</div>
+                            <div class="hts-value">${r.special_rate || 'N/A'}</div>
+                            ${r.parent_hts_number ? `
+                                <div class="hts-label">Parent Code:</div>
+                                <div class="hts-value">${r.parent_hts_number}</div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="result-item error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function hybridSearch() {
+            const htsCode = document.getElementById('htsCode').value;
+            const query = document.getElementById('hybridQuery').value;
+
+            if (!htsCode.trim() || !query.trim()) {
+                alert('Please enter both HTS code and search query');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">🔍 Performing hybrid search...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}&hts_code=${encodeURIComponent(htsCode)}&limit=10`);
+                const results = await response.json();
+
+                if (results.length === 0) {
+                    resultsDiv.innerHTML = '<div class="result-item">No results found for this combination.</div>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = `
+                    <div style="margin-bottom: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px;">
+                        <strong>Filtering by HTS Code:</strong> ${htsCode}
+                    </div>
+                ` + results.map(r => `
+                    <div class="result-item">
+                        <div class="result-title">${r.title}</div>
+                        <div class="result-meta">
+                            <span class="badge">${r.type || 'Document'}</span>
+                            <span class="badge">${r.date || 'No date'}</span>
+                            <span class="score">Relevance: ${(r.score * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="result-excerpt">${r.excerpt}</div>
+                        ${r.url ? `<div style="margin-top:10px"><a href="${r.url}" target="_blank">View on FederalRegister.gov →</a></div>` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="result-item error">Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
