@@ -244,3 +244,17 @@ class PostgresStore:
         return self.session.query(IngestionRun).filter_by(
             source=source, status='completed'
         ).order_by(IngestionRun.completed_at.desc()).first()
+
+    def get_document_count(self) -> int:
+        """Get total number of documents."""
+        return self.session.query(Document).count()
+
+    def get_hts_count(self) -> int:
+        """Get total number of HTS codes."""
+        return self.session.query(HTSCode).count()
+
+    def get_recent_ingestion_runs(self, limit: int = 10) -> List[IngestionRun]:
+        """Get recent ingestion runs."""
+        return self.session.query(IngestionRun).order_by(
+            IngestionRun.started_at.desc()
+        ).limit(limit).all()

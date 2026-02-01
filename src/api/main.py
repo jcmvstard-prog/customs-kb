@@ -88,12 +88,19 @@ async def health():
         qdrant_store = QdrantStore(qdrant_client)
         collection_info = qdrant_store.get_collection_info()
 
+        vectors_count = 0
+        if collection_info:
+            if hasattr(collection_info, 'points_count'):
+                vectors_count = collection_info.points_count
+            elif isinstance(collection_info, dict):
+                vectors_count = collection_info.get('points_count', 0)
+
         return {
             "status": "healthy",
             "database": "connected",
             "vector_db": "connected",
             "documents": doc_count,
-            "vectors": collection_info.points_count if collection_info else 0
+            "vectors": vectors_count
         }
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
@@ -223,10 +230,17 @@ async def get_status():
             qdrant_store = QdrantStore(qdrant_client)
             collection_info = qdrant_store.get_collection_info()
 
+            vectors_count = 0
+            if collection_info:
+                if hasattr(collection_info, 'points_count'):
+                    vectors_count = collection_info.points_count
+                elif isinstance(collection_info, dict):
+                    vectors_count = collection_info.get('points_count', 0)
+
             return StatusResponse(
                 documents_count=doc_count,
                 hts_codes_count=hts_count,
-                vector_points=collection_info.points_count if collection_info else 0,
+                vector_points=vectors_count,
                 recent_ingestions=[
                     {
                         "id": run.id,
