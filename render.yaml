@@ -2,9 +2,9 @@ services:
   # PostgreSQL Database
   - type: pserv
     name: customs-kb-postgres
-    env: docker
-    plan: free
-    dockerfilePath: ./Dockerfile.postgres
+    runtime: image
+    image:
+      url: postgres:16-alpine
     envVars:
       - key: POSTGRES_USER
         value: customs_user
@@ -20,13 +20,9 @@ services:
   # Qdrant Vector Database
   - type: pserv
     name: customs-kb-qdrant
-    env: docker
-    plan: free
+    runtime: image
     image:
-      url: docker.io/qdrant/qdrant:v1.7.4
-    envVars:
-      - key: QDRANT__SERVICE__HTTP_PORT
-        value: 6333
+      url: qdrant/qdrant:v1.7.4
     disk:
       name: qdrant-data
       mountPath: /qdrant/storage
@@ -35,15 +31,14 @@ services:
   # Python Application
   - type: web
     name: customs-kb-app
-    env: python
-    plan: free
-    buildCommand: pip install -r requirements.txt && python scripts/init_db.py && python scripts/init_qdrant.py
-    startCommand: python -m src.cli.main ingest status
+    runtime: docker
+    repo: https://github.com/jcmvstard-prog/customs-kb
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: POSTGRES_HOST
         fromService:
-          type: pserv
           name: customs-kb-postgres
+          type: pserv
           property: host
       - key: POSTGRES_PORT
         value: 5432
@@ -51,15 +46,15 @@ services:
         value: customs_user
       - key: POSTGRES_PASSWORD
         fromService:
-          type: pserv
           name: customs-kb-postgres
+          type: pserv
           envVarKey: POSTGRES_PASSWORD
       - key: POSTGRES_DB
         value: customs_kb
       - key: QDRANT_HOST
         fromService:
-          type: pserv
           name: customs-kb-qdrant
+          type: pserv
           property: host
       - key: QDRANT_PORT
         value: 6333
