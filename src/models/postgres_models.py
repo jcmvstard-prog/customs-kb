@@ -73,8 +73,8 @@ class HTSCode(Base):
     hts_number = Column(String(50), unique=True, nullable=False, index=True)
     indent_level = Column(Integer)
     description = Column(Text, nullable=False)
-    general_rate = Column(String(200))
-    special_rate = Column(String(200))
+    general_rate = Column(Text)  # Changed from String(200) to Text for long descriptions
+    special_rate = Column(Text)  # Changed from String(200) to Text for long descriptions
     parent_hts_number = Column(String(50))
     effective_date = Column(Date)
 

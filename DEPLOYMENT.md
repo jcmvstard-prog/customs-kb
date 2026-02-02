@@ -1,261 +1,319 @@
-# Deployment Guide
+# Deployment Guide - US Customs Knowledge Base
 
-## Current Status
+This guide covers multiple deployment scenarios for the customs knowledge base.
 
-✅ **All code implemented and ready**
-✅ **Configuration files created**
-✅ **Environment file (.env) configured**
-⏳ **Awaiting Docker services to start**
+## Quick Summary
 
-## Deployment Steps
+Choose your deployment method:
 
-### Step 1: Start Docker Desktop
-
-Ensure Docker Desktop is running on your Mac:
-```bash
-# Check if Docker is running
-docker --version
-docker-compose --version
-```
-
-If Docker is not installed, download from: https://www.docker.com/products/docker-desktop
-
-### Step 2: Navigate to Project
-
-```bash
-cd ~/my-new-project/customs-kb
-```
-
-### Step 3: Start Services (5 minutes)
-
-```bash
-# Start PostgreSQL and Qdrant
-docker-compose up -d
-
-# Wait for services to be ready
-echo "Waiting for services to start..."
-sleep 10
-
-# Check service health
-docker-compose ps
-```
-
-Expected output:
-```
-NAME                      STATUS    PORTS
-customs_kb_postgres       Up        0.0.0.0:5432->5432/tcp
-customs_kb_qdrant         Up        0.0.0.0:6333->6333/tcp
-```
-
-### Step 4: Create Virtual Environment
-
-```bash
-# Create virtual environment
-python3.11 -m venv venv
-
-# Activate it
-source venv/bin/activate
-
-# Upgrade pip
-pip install --upgrade pip
-
-# Install dependencies (may take 5-10 minutes for ML libraries)
-pip install -r requirements.txt
-```
-
-### Step 5: Initialize Databases
-
-```bash
-# Create PostgreSQL tables
-python scripts/init_db.py
-
-# Create Qdrant collection
-python scripts/init_qdrant.py
-```
-
-Expected output:
-```
-Creating database tables...
-Database tables created successfully
-Created tables: documents, agencies, hts_codes, ...
-
-Creating Qdrant collection: cbp_documents
-Collection 'cbp_documents' created successfully
-```
-
-### Step 6: Verify Setup
-
-```bash
-python scripts/verify_setup.py
-```
-
-All checks should pass with ✓
-
-### Step 7: Ingest Sample Data (2-5 minutes)
-
-```bash
-# Ingest HTSUS tariff codes (fast - sample data)
-python -m src.cli.main ingest htsus
-
-# Ingest Federal Register documents (slower - API calls)
-# Start with last month for quick testing:
-python -m src.cli.main ingest federal-register \
-    --start-date 2025-12-01 \
-    --end-date 2025-12-31
-```
-
-### Step 8: Test Queries
-
-```bash
-# Check ingestion status
-python -m src.cli.main ingest status
-
-# Try semantic search
-python -m src.cli.main query search "cheese import regulations" --limit 5
-
-# Look up HTS codes
-python -m src.cli.main query hts-lookup "cheese"
-
-# Get HTS code details
-python -m src.cli.main query hts-info 0406.30.00
-
-# Run demo queries
-python scripts/sample_queries.py
-```
-
-## Alternative: One-Command Deployment
-
-If you prefer automated setup:
-
-```bash
-cd ~/my-new-project/customs-kb
-bash setup.sh
-```
-
-This script will:
-1. ✅ Check Python version
-2. ✅ Create virtual environment
-3. ✅ Install dependencies
-4. ✅ Start Docker services
-5. ✅ Initialize databases
-6. ✅ Verify setup
-
-## Using Makefile Commands
-
-For convenience, use the Makefile:
-
-```bash
-# Show all available commands
-make help
-
-# Start Docker services
-make start
-
-# Ingest data
-make ingest-htsus
-make ingest-federal
-
-# Check status
-make status
-
-# Run demo queries
-make query-demo
-
-# Stop services
-make stop
-
-# Complete cleanup
-make clean
-```
-
-## Verification Checklist
-
-After deployment, verify:
-
-- [ ] Docker containers running: `docker-compose ps`
-- [ ] PostgreSQL accessible: `docker-compose exec postgres psql -U customs_user -d customs_kb -c "\dt"`
-- [ ] Qdrant accessible: `curl http://localhost:6333/health`
-- [ ] Virtual environment active: `which python` shows venv path
-- [ ] Dependencies installed: `pip list | grep sentence-transformers`
-- [ ] Tables created: `python scripts/verify_setup.py`
-- [ ] Data ingested: `python -m src.cli.main ingest status`
-- [ ] Queries working: `python -m src.cli.main query search "test"`
-
-## Troubleshooting
-
-If you encounter issues, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-
-Common fixes:
-```bash
-# Reset everything
-docker-compose down -v
-rm -rf venv data/
-bash setup.sh
-
-# Check logs
-docker-compose logs -f
-
-# Verify setup
-python scripts/verify_setup.py
-```
-
-## System Requirements
-
-- **Python**: 3.11+
-- **Docker**: Latest version
-- **RAM**: 4GB minimum (8GB recommended)
-- **Disk**: 5GB free space
-- **Network**: Internet connection for API access and model downloads
-
-## Expected Timing
-
-- **Setup**: 10-15 minutes (first time)
-- **HTSUS ingestion**: 1 minute
-- **Federal Register (1 month)**: 5-10 minutes
-- **Federal Register (2 years)**: 30-60 minutes
-- **Query response**: <500ms
-
-## Next Steps After Deployment
-
-1. **Test all query types**:
-   - Semantic: Natural language search
-   - Structured: Document lookup by ID
-   - Hybrid: HTS code + semantic search
-
-2. **Explore the data**:
-   - Browse ingested documents
-   - Check HTS code relationships
-   - Review agency connections
-
-3. **Performance testing**:
-   - Measure query latency
-   - Test with larger datasets
-   - Monitor resource usage
-
-4. **Extend functionality**:
-   - Add more data sources
-   - Build REST API
-   - Create web frontend
-   - Add authentication
-
-## Production Deployment
-
-For production use:
-1. Use managed PostgreSQL (AWS RDS, Cloud SQL)
-2. Use managed Qdrant (Qdrant Cloud)
-3. Add authentication and RBAC
-4. Set up monitoring (Prometheus, Grafana)
-5. Configure backups
-6. Use Kubernetes for orchestration
-7. Add rate limiting and caching
-
-## Support
-
-- Documentation: See README.md, QUICKSTART.md
-- Troubleshooting: See TROUBLESHOOTING.md
-- Code: Review src/ directory
-- Tests: Run `pytest tests/`
+1. **Docker (Easiest)** - Complete stack with one command
+2. **Cloud Platforms** - AWS, DigitalOcean, Railway, etc.
+3. **Standalone Server** - Manual installation on Linux
+4. **Embed in Code** - Use as library in your application
+5. **Database Copy** - Transfer existing data to new server
 
 ---
 
-**Ready to deploy!** Run `bash setup.sh` when Docker is available.
+## 1. Docker Deployment (Recommended)
+
+**Prerequisites:** Docker and Docker Compose installed
+
+```bash
+# On your target server
+git clone https://github.com/YOUR_USERNAME/customs-kb.git
+cd customs-kb
+
+# Configure environment
+cp .env.example .env
+nano .env  # Edit database passwords
+
+# Build and start
+docker-compose -f docker-compose.production.yml up -d --build
+
+# Check health
+curl http://localhost:8000/health
+```
+
+**Access:**
+- API: http://your-server:8000
+- Dashboard: http://your-server:8000/dashboard
+- API Docs: http://your-server:8000/docs
+
+**Important:** This deploys the application but NOT the data. See [Data Migration](#data-migration) below.
+
+---
+
+## 2. Cloud Platform Deployment
+
+### AWS (ECS + RDS)
+
+```bash
+# 1. Push to ECR
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin YOUR_ECR_URL
+docker build -f Dockerfile.production -t customs-kb .
+docker push YOUR_ECR_URL/customs-kb:latest
+
+# 2. Create RDS PostgreSQL (db.t3.micro or larger)
+# 3. Deploy Qdrant on EC2 
+# 4. Create ECS task definition pointing to RDS and Qdrant
+# 5. Create ECS service with ALB
+```
+
+### DigitalOcean (Droplet + Managed DB)
+
+```bash
+# 1. Create 4GB+ Droplet
+# 2. Add managed PostgreSQL database  
+# 3. SSH and install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+
+# 4. Deploy
+git clone YOUR_REPO
+cd customs-kb
+docker-compose -f docker-compose.production.yml up -d
+```
+
+### Railway / Render (GitHub Integration)
+
+1. Push code to GitHub
+2. Connect repository in platform UI
+3. Set environment variables
+4. Deploy automatically
+
+---
+
+## 3. Standalone Server
+
+Manual installation on Ubuntu/Debian:
+
+```bash
+# Install dependencies
+sudo apt update
+sudo apt install -y python3.11 python3.11-venv postgresql-16 git
+
+# Setup project
+cd /opt
+git clone YOUR_REPO customs-kb
+cd customs-kb
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Configure PostgreSQL
+sudo -u postgres psql
+CREATE DATABASE customs_kb;
+CREATE USER customs_user WITH PASSWORD 'password';
+GRANT ALL PRIVILEGES ON DATABASE customs_kb TO customs_user;
+\q
+
+# Initialize database
+python scripts/init_db.py
+
+# Create systemd service
+sudo nano /etc/systemd/system/customs-kb.service
+```
+
+**Systemd service file:**
+```ini
+[Unit]
+Description=US Customs KB API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/customs-kb
+Environment="PATH=/opt/customs-kb/venv/bin"
+ExecStart=/opt/customs-kb/venv/bin/python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable customs-kb
+sudo systemctl start customs-kb
+```
+
+---
+
+## 4. Embed in Another Codebase
+
+### As Microservice (Recommended)
+
+Keep customs KB as separate API and call it:
+
+```python
+import httpx
+
+CUSTOMS_KB_URL = "http://localhost:8000"
+
+async def search_customs(query: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{CUSTOMS_KB_URL}/api/search",
+            params={"q": query, "limit": 5}
+        )
+        return response.json()
+```
+
+### As Python Library
+
+```python
+# Copy src/ directory into your project as customs_kb/
+from customs_kb.query.semantic_search import SemanticSearch
+from customs_kb.query.structured_query import StructuredQuery
+
+semantic = SemanticSearch()
+results = semantic.search("steel duties", limit=5)
+```
+
+### Shared Database
+
+```python
+# Multiple apps can query the same database
+from sqlalchemy import create_engine
+
+engine = create_engine("postgresql://user:pass@server/customs_kb")
+# Query directly with SQL
+```
+
+---
+
+## 5. Data Migration
+
+**Export from local machine:**
+
+```bash
+# Export PostgreSQL
+pg_dump -h localhost -U customs_user -d customs_kb -F c -f customs_kb.dump
+
+# Export Qdrant (stop container first)
+docker-compose stop qdrant
+tar -czf qdrant_data.tar.gz ./qdrant_data/
+
+# Transfer to remote server
+scp customs_kb.dump user@server:/tmp/
+scp qdrant_data.tar.gz user@server:/tmp/
+```
+
+**Import on remote server:**
+
+```bash
+# Import PostgreSQL
+pg_restore -h localhost -U customs_user -d customs_kb /tmp/customs_kb.dump
+
+# Import Qdrant
+cd /opt/customs-kb
+tar -xzf /tmp/qdrant_data.tar.gz
+# Mount in docker-compose: ./qdrant_data:/qdrant/storage
+```
+
+**Complete backup script:**
+
+```bash
+#!/bin/bash
+BACKUP_DIR="backups/$(date +%Y%m%d)"
+mkdir -p $BACKUP_DIR
+
+pg_dump -h localhost -U customs_user -d customs_kb -F c -f $BACKUP_DIR/postgres.dump
+docker-compose cp qdrant:/qdrant/storage $BACKUP_DIR/qdrant
+cp .env $BACKUP_DIR/.env
+
+tar -czf customs_kb_backup_$(date +%Y%m%d).tar.gz $BACKUP_DIR
+echo "Backup complete"
+```
+
+---
+
+## Environment Variables
+
+```bash
+# Required
+POSTGRES_HOST=your-db-host
+POSTGRES_PORT=5432
+POSTGRES_DB=customs_kb
+POSTGRES_USER=customs_user
+POSTGRES_PASSWORD=your-secure-password
+
+QDRANT_HOST=your-qdrant-host
+QDRANT_PORT=6333
+QDRANT_COLLECTION=cbp_documents
+
+# Optional
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+LOG_LEVEL=INFO
+```
+
+---
+
+## HTTPS Setup (Nginx)
+
+```nginx
+server {
+    listen 80;
+    server_name customs-kb.yourdomain.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name customs-kb.yourdomain.com;
+
+    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+---
+
+## Security Checklist
+
+- [ ] Change default passwords
+- [ ] Enable HTTPS with SSL certificate
+- [ ] Set up firewall (ufw/iptables)
+- [ ] Enable PostgreSQL SSL
+- [ ] Add API authentication (JWT)
+- [ ] Configure CORS for production domains
+- [ ] Never commit secrets to git
+- [ ] Set up automated backups
+- [ ] Enable logging and monitoring
+
+---
+
+## Troubleshooting
+
+**Can't connect to database:**
+- Check firewall rules
+- Verify credentials in .env
+- Check pg_hba.conf for remote connections
+
+**Qdrant not responding:**
+- Verify container/service is running
+- Check port 6333 is open
+- Review Qdrant logs
+
+**API returns 502:**
+- Check all services are running
+- Verify environment variables
+- Check application logs
+
+---
+
+## Next Steps
+
+1. Set up reverse proxy (nginx) with HTTPS
+2. Configure automated backups
+3. Add monitoring (Prometheus/Grafana)
+4. Set up CI/CD (GitHub Actions)
+5. Scale horizontally (load balancer + multiple instances)
+
+See [README.md](README.md) and [CLAUDE.md](CLAUDE.md) for more information.

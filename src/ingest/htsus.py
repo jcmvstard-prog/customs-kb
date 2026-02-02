@@ -15,9 +15,6 @@ from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# Sample HTSUS data source (for POC, using a simplified approach)
-HTSUS_SAMPLE_URL = "https://hts.usitc.gov/export/2024-HTSARev1.csv"
-
 
 class HTSUSIngester(BaseIngester):
     """Ingest HTSUS tariff data."""
@@ -30,98 +27,43 @@ class HTSUSIngester(BaseIngester):
 
     def fetch(self, url: Optional[str] = None, **kwargs) -> pd.DataFrame:
         """
-        Fetch HTSUS data.
-
-        For POC, we'll create sample data. In production, download from Data.gov.
+        Fetch HTSUS data from USITC.
 
         Args:
-            url: URL to download from (optional)
+            url: URL to download from (optional, defaults to USITC 2025 basic edition)
 
         Returns:
             pd.DataFrame: HTSUS data
         """
-        # For POC, create sample HTSUS data
-        # In production, download actual CSV from USITC or Data.gov
-        logger.info("Creating sample HTSUS data for POC")
+        if url is None:
+            url = "https://www.usitc.gov/sites/default/files/tata/hts/hts_2025_basic_edition_csv.csv"
 
-        sample_data = [
-            {
-                'hts_number': '0406.10.00',
-                'indent_level': 2,
-                'description': 'Fresh (unripened or uncured) cheese',
-                'general_rate': '10%',
-                'special_rate': 'Free (A+,AU,BH,CA,CL,CO,D,E,IL,JO,KR,MA,MX,OM,P,PA,PE,S,SG)',
-                'parent_hts_number': '0406.00.00'
-            },
-            {
-                'hts_number': '0406.20.00',
-                'indent_level': 2,
-                'description': 'Grated or powdered cheese',
-                'general_rate': '8%',
-                'special_rate': 'Free (A,AU,BH,CA,CL,CO,D,E,IL,JO,KR,MA,MX,OM,P,PA,PE,S,SG)',
-                'parent_hts_number': '0406.00.00'
-            },
-            {
-                'hts_number': '0406.30.00',
-                'indent_level': 2,
-                'description': 'Processed cheese',
-                'general_rate': '10%',
-                'special_rate': 'Free (A+,AU,BH,CA,CL,CO,D,E,IL,JO,KR,MA,MX,OM,P,PA,PE,S,SG)',
-                'parent_hts_number': '0406.00.00'
-            },
-            {
-                'hts_number': '0406.40.00',
-                'indent_level': 2,
-                'description': 'Blue-veined cheese',
-                'general_rate': '10%',
-                'special_rate': 'Free (A+,AU,BH,CA,CL,CO,D,E,IL,JO,KR,MA,MX,OM,P,PA,PE,S,SG)',
-                'parent_hts_number': '0406.00.00'
-            },
-            {
-                'hts_number': '0406.90.00',
-                'indent_level': 2,
-                'description': 'Other cheese',
-                'general_rate': '10%',
-                'special_rate': 'Free (A+,AU,BH,CA,CL,CO,D,E,IL,JO,KR,MA,MX,OM,P,PA,PE,S,SG)',
-                'parent_hts_number': '0406.00.00'
-            },
-            {
-                'hts_number': '6204.11.00',
-                'indent_level': 2,
-                'description': 'Women\'s suits, of wool or fine animal hair',
-                'general_rate': '16%',
-                'special_rate': 'Free (AU,BH,CA,CL,CO,IL,JO,KR,MA,MX,OM,P,PA,PE,S,SG)',
-                'parent_hts_number': '6204.00.00'
-            },
-            {
-                'hts_number': '7208.10.00',
-                'indent_level': 2,
-                'description': 'Flat-rolled products of iron or steel',
-                'general_rate': 'Free',
-                'special_rate': 'Free',
-                'parent_hts_number': '7208.00.00'
-            },
-            {
-                'hts_number': '8471.30.00',
-                'indent_level': 2,
-                'description': 'Portable automatic data processing machines',
-                'general_rate': 'Free',
-                'special_rate': 'Free',
-                'parent_hts_number': '8471.00.00'
-            },
-            {
-                'hts_number': '9401.20.00',
-                'indent_level': 2,
-                'description': 'Seats of a kind used for motor vehicles',
-                'general_rate': 'Free',
-                'special_rate': 'Free',
-                'parent_hts_number': '9401.00.00'
-            },
-        ]
+        local_file = self.data_dir / "htsus_2025_basic.csv"
 
-        df = pd.DataFrame(sample_data)
-        logger.info(f"Created sample HTSUS data with {len(df)} codes")
+        # Download if not cached
+        if not local_file.exists():
+            logger.info(f"Downloading HTSUS data from {url}")
+            response = httpx.get(url, follow_redirects=True, timeout=120.0)
+            response.raise_for_status()
+            local_file.write_bytes(response.content)
+            logger.info(f"Downloaded {len(response.content)} bytes to {local_file}")
+        else:
+            logger.info(f"Using cached HTSUS data from {local_file}")
 
+        # Read CSV with proper encoding
+        df = pd.read_csv(
+            local_file,
+            encoding='utf-8-sig',  # Handle BOM
+            dtype=str  # Read all as strings initially
+        )
+
+        # Normalize column names
+        df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
+
+        # Filter to only rows with HTS numbers (skip header rows without codes)
+        df = df[df['hts_number'].notna() & (df['hts_number'].str.strip() != '')]
+
+        logger.info(f"Loaded {len(df)} HTSUS entries")
         return df
 
     def transform(self, raw_data: pd.DataFrame) -> Dict[str, Any]:
@@ -136,18 +78,52 @@ class HTSUSIngester(BaseIngester):
         """
         hts_codes = []
 
-        for _, row in raw_data.iterrows():
+        logger.info("Transforming HTSUS data...")
+
+        # Track parent codes for hierarchy
+        parents_by_level = {}
+
+        for _, row in tqdm(raw_data.iterrows(), total=len(raw_data), desc="Processing HTS codes"):
+            hts_number = str(row['hts_number']).strip()
+            indent_str = str(row.get('indent', '')).strip()
+
+            # Convert indent to int, default to 0
+            try:
+                indent_level = int(indent_str) if indent_str else 0
+            except ValueError:
+                indent_level = 0
+
+            description = str(row.get('description', '')).strip()
+            general_rate = str(row.get('general_rate_of_duty', '')).strip()
+            special_rate = str(row.get('special_rate_of_duty', '')).strip()
+
+            # Determine parent based on indent hierarchy
+            parent_hts_number = None
+            if indent_level > 0:
+                # Find parent from previous level
+                for level in range(indent_level - 1, -1, -1):
+                    if level in parents_by_level:
+                        parent_hts_number = parents_by_level[level]
+                        break
+
+            # Store this code as potential parent for future codes
+            parents_by_level[indent_level] = hts_number
+            # Clear deeper levels
+            parents_by_level = {k: v for k, v in parents_by_level.items() if k <= indent_level}
+
             hts_code = {
-                'hts_number': row['hts_number'],
-                'indent_level': row['indent_level'],
-                'description': row['description'],
-                'general_rate': row['general_rate'],
-                'special_rate': row['special_rate'],
-                'parent_hts_number': row.get('parent_hts_number'),
-                'effective_date': None  # POC: no date filtering
+                'hts_number': hts_number,
+                'indent_level': indent_level,
+                'description': description,
+                'general_rate': general_rate if general_rate and general_rate != 'nan' else None,
+                'special_rate': special_rate if special_rate and special_rate != 'nan' else None,
+                'parent_hts_number': parent_hts_number,
+                'effective_date': None
             }
 
             hts_codes.append(hts_code)
+
+        logger.info(f"Transformed {len(hts_codes)} HTS codes")
 
         return {
             'hts_codes': hts_codes,
@@ -177,26 +153,45 @@ class HTSUSIngester(BaseIngester):
                 # Create ingestion run
                 ingestion_run = postgres_store.create_ingestion_run('htsus')
 
-                processed = 0
+                logger.info(f"Loading {len(hts_codes)} HTS codes to database...")
 
-                for hts_data in tqdm(hts_codes, desc="Loading HTS codes"):
-                    try:
-                        postgres_store.get_or_create_hts_code(hts_data)
-                        processed += 1
-                    except Exception as e:
-                        logger.error(f"Failed to load HTS code {hts_data['hts_number']}: {e}")
+                # Bulk upsert HTS codes
+                for hts_code_data in tqdm(hts_codes, desc="Upserting HTS codes"):
+                    postgres_store.get_or_create_hts_code(hts_code_data)
 
-                # Update ingestion run
-                status = 'completed' if processed > 0 else 'failed'
-                postgres_store.update_ingestion_run(
+                # Commit and update ingestion run
+                db_session.commit()
+                postgres_store.complete_ingestion_run(
                     ingestion_run.id,
-                    status=status,
-                    documents_processed=processed
+                    documents_processed=len(hts_codes)
                 )
 
-                logger.info(f"Loaded {processed} HTS codes successfully")
-                return processed > 0
+                logger.info(f"Successfully loaded {len(hts_codes)} HTS codes")
+                return True
 
         except Exception as e:
-            logger.error(f"Load failed: {e}")
+            logger.error(f"Error loading HTS codes: {e}", exc_info=True)
+            return False
+
+    def ingest(self, **kwargs) -> bool:
+        """
+        Run full HTSUS ingestion pipeline.
+
+        Returns:
+            bool: Success status
+        """
+        try:
+            # Fetch
+            raw_data = self.fetch(**kwargs)
+
+            # Transform
+            transformed_data = self.transform(raw_data)
+
+            # Load
+            success = self.load(transformed_data)
+
+            return success
+
+        except Exception as e:
+            logger.error(f"HTSUS ingestion failed: {e}", exc_info=True)
             return False

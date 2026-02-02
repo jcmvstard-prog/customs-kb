@@ -113,18 +113,17 @@ async def search_hts_codes(
 ):
     """Search HTS codes by keyword."""
     try:
-        with get_db_session() as session:
-            structured = StructuredQuery(session)
-            codes = structured.search_hts_codes(q, limit=limit)
+        structured = StructuredQuery()
+        codes = structured.search_hts_codes(q, limit=limit)
 
-            return [
-                HTSCode(
-                    hts_number=code.hts_number,
-                    description=code.description,
-                    general_rate=code.general_rate,
-                    special_rate=code.special_rate,
-                    indent_level=code.indent_level,
-                    parent_hts_number=code.parent_hts_number
+        return [
+            HTSCode(
+                    hts_number=code['hts_number'],
+                    description=code['description'],
+                    general_rate=code.get('general_rate'),
+                    special_rate=code.get('special_rate'),
+                    indent_level=code.get('indent_level'),
+                    parent_hts_number=code.get('parent_hts_number')
                 )
                 for code in codes
             ]
@@ -135,20 +134,19 @@ async def search_hts_codes(
 async def get_hts_code(hts_number: str):
     """Get specific HTS code details."""
     try:
-        with get_db_session() as session:
-            structured = StructuredQuery(session)
-            code = structured.get_hts_code(hts_number)
+        structured = StructuredQuery()
+        code = structured.get_hts_code_info(hts_number)
 
-            if not code:
-                raise HTTPException(status_code=404, detail="HTS code not found")
+        if not code:
+            raise HTTPException(status_code=404, detail="HTS code not found")
 
-            return HTSCode(
-                hts_number=code.hts_number,
-                description=code.description,
-                general_rate=code.general_rate,
-                special_rate=code.special_rate,
-                indent_level=code.indent_level,
-                parent_hts_number=code.parent_hts_number
+        return HTSCode(
+                hts_number=code['hts_number'],
+                description=code['description'],
+                general_rate=code.get('general_rate'),
+                special_rate=code.get('special_rate'),
+                indent_level=code.get('indent_level'),
+                parent_hts_number=code.get('parent_hts_number')
             )
     except HTTPException:
         raise
@@ -164,22 +162,19 @@ async def semantic_search(
 ):
     """Semantic search across documents."""
     try:
-        with get_db_session() as session:
-            qdrant_client = get_qdrant_client()
-            semantic = SemanticSearch(session, qdrant_client)
+        semantic = SemanticSearch()
 
-            filters = {}
-            if hts_code:
-                filters['hts_codes'] = [hts_code]
+        # Build filter parameters
+        hts_codes = [hts_code] if hts_code else None
 
-            results = semantic.search(q, limit=limit, filters=filters)
+        results = semantic.search(q, limit=limit, hts_codes=hts_codes)
 
-            return [
-                SearchResult(
+        return [
+            SearchResult(
                     document_number=r['document_number'],
                     title=r['title'],
                     score=r['score'],
-                    date=r['publication_date'].isoformat() if r.get('publication_date') else None,
+                    date=r.get('publication_date'),
                     type=r.get('document_type'),
                     url=r.get('html_url'),
                     excerpt=r.get('abstract', '')[:200] if r.get('abstract') else '',
@@ -194,20 +189,19 @@ async def semantic_search(
 async def get_document(document_number: str):
     """Get specific document by number."""
     try:
-        with get_db_session() as session:
-            structured = StructuredQuery(session)
-            doc = structured.get_document_by_number(document_number)
+        structured = StructuredQuery()
+        doc = structured.get_document_by_number(document_number)
 
-            if not doc:
-                raise HTTPException(status_code=404, detail="Document not found")
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
 
-            return Document(
-                document_number=doc.document_number,
-                title=doc.title,
-                document_type=doc.document_type,
-                publication_date=doc.publication_date.isoformat() if doc.publication_date else None,
-                abstract=doc.abstract,
-                html_url=doc.html_url
+        return Document(
+                document_number=doc['document_number'],
+                title=doc['title'],
+                document_type=doc.get('document_type'),
+                publication_date=doc.get('publication_date'),
+                abstract=doc.get('abstract'),
+                html_url=doc.get('html_url')
             )
     except HTTPException:
         raise

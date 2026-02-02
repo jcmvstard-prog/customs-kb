@@ -1,8 +1,45 @@
-# US Customs Knowledge Base POC
+# US Customs Knowledge Base
 
 A hybrid knowledge base system combining semantic search (Qdrant) with structured lookups (PostgreSQL) for US Customs and Border Protection data.
 
+**📊 Database:** 3,958 Federal Register documents + 29,851 HTS tariff codes
 **🚀 Live Repository**: https://github.com/jcmvstard-prog/customs-kb
+**🤖 Claude Code Integration**: Pre-configured and ready to use
+
+## 🤖 Use with Claude Code
+
+**Your customs knowledge base is now integrated with Claude Code!**
+
+### Quick Access
+
+```bash
+# Helper script for easy queries
+~/my-new-project/customs-kb/scripts/query_kb.sh search "your query"
+~/my-new-project/customs-kb/scripts/query_kb.sh hts "product name"
+~/my-new-project/customs-kb/scripts/query_kb.sh status
+```
+
+### Start the API
+
+```bash
+cd ~/my-new-project/customs-kb
+source venv/bin/activate
+python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload &
+```
+
+**Web Dashboard**: http://localhost:8000/dashboard
+
+### Ask Claude Questions
+
+Once the API is running, ask Claude Code:
+- "What are the import duties for cheese from France?"
+- "Find HTS codes for electronic devices"
+- "Show me recent CBP rulings about steel imports"
+- "What are the special duty rates for textiles?"
+
+Claude will automatically query the knowledge base using the helper scripts documented in `/Users/james/CLAUDE.md`
+
+---
 
 ## 🚀 Quick Deploy
 

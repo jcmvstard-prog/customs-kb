@@ -231,6 +231,16 @@ class PostgresStore:
 
             logger.info(f"Updated ingestion run {run_id}: {status}")
 
+    def complete_ingestion_run(self, run_id: int, documents_processed: int):
+        """
+        Mark ingestion run as completed.
+
+        Args:
+            run_id: Ingestion run ID
+            documents_processed: Number of documents processed
+        """
+        self.update_ingestion_run(run_id, 'completed', documents_processed)
+
     def get_last_ingestion_run(self, source: str) -> Optional[IngestionRun]:
         """
         Get last completed ingestion run for a source.
